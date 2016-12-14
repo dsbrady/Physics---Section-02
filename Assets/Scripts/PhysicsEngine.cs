@@ -4,36 +4,77 @@ using System.Collections.Generic;
 
 public class PhysicsEngine : MonoBehaviour {
 
-	public float mass = 0;
-	public Vector3 velocity = Vector3.zero;
-	public List<Vector3> forces = new List<Vector3>();
-	public Vector3 netForce = Vector3.zero;
+	public float mass;							// [kg]
+	public Vector3 velocity = Vector3.zero;		// [m/s]
+	public Vector3 netForce = Vector3.zero;		// N [kg m/s^2]
+	public bool showTrails = true;
 
+	private List<Vector3> forceVectors = new List<Vector3>();	// N [kg m/s^2]
+	private LineRenderer lineRenderer;
 
-	void FixedUpdate() {
-		UpdateVelocity();
-
-		transform.position += velocity * Time.deltaTime;
+	void Start() {
+		InitializeThrustTrails ();
 	}
 
-	private void AddForces() {
+	void FixedUpdate() {
+		RenderThrustTrails();
+		UpdatePosition();
+	}
+
+	public void ApplyForce(Vector3 force) {
+		this.forceVectors.Add(force);
+//		Debug.Log("Adding force: " + force + " to " + gameObject.name);
+	}
+
+	private void InitializeThrustTrails()
+	{
+		lineRenderer = gameObject.AddComponent<LineRenderer> ();
+		lineRenderer.material = new Material (Shader.Find ("Sprites/Default"));
+		lineRenderer.startWidth = 0.2f;
+		lineRenderer.endWidth = 0.2f;
+		lineRenderer.useWorldSpace = false;
+		lineRenderer.startColor = Color.yellow;
+		lineRenderer.endColor = Color.yellow;
+	}
+
+	private void RenderThrustTrails() {
+		if (this.showTrails) {
+			lineRenderer.enabled = true;
+			lineRenderer.numPositions = showTrails ? (this.forceVectors.Count * 2) : 0;
+
+			int i = 0;
+			foreach (Vector3 forceVector in this.forceVectors) {
+				lineRenderer.SetPosition(i, Vector3.zero);
+				lineRenderer.SetPosition(i+1, -forceVector);
+				i = i + 2;
+			}
+		} 
+		else {
+			lineRenderer.enabled = false;
+		}
+	}
+
+	private void SumForces() {
 		this.netForce = Vector3.zero;
 
-		foreach (Vector3 force in this.forces) {
+		foreach (Vector3 force in this.forceVectors) {
 			this.netForce += force;
 		}
 
 		return;
 	}
 
-	private void UpdateVelocity() {
+	private void UpdatePosition() {
 		Vector3 acceleration = Vector3.zero;
-		AddForces();
+		SumForces();
+
+		this.forceVectors.Clear();
 
 		if (mass > 0) {
 			acceleration = this.netForce / this.mass;
 		}
 
 		this.velocity += acceleration * Time.deltaTime;
+		transform.position += velocity * Time.deltaTime;
 	}
 }
